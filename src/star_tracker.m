@@ -29,19 +29,19 @@ axis equal;
 % boresight
 % Update rate: 0.5-10Hz
 % Geometry: Pinhole camera
-opt_ax = randn([3,1]);
-opt_ax = r*(opt_ax./norm(opt_ax))
-norm(opt_ax)
-plot3([0; opt_ax(1)], [0; opt_ax(2)], [0; opt_ax(3)], "LineWidth", 2)
+% opt_ax = randn([3,1]);
+% opt_ax = r*(opt_ax./norm(opt_ax))
+% norm(opt_ax)
+% plot3([0; opt_ax(1)], [0; opt_ax(2)], [0; opt_ax(3)], "LineWidth", 2)
 
 % Camera is defocused --> stars cover several pixels (2x2 or 3x3) -->
 % centroid is determined with accuracy kappa_cent
-kappa_cent = 0.1; % [px]
-f = 50E-6; % [mm] to [km]; Distance to focal plane
-res = 1024; % [px]; Resolution/image width and height, assuming square img
-u0 = res/2;
-v0 = res/2;
-img_coord_func = @(s)([u0 + f*s(1)/s(3); v0 + f*s(2)/s(3)]);
+% kappa_cent = 0.1; % [px]
+% f = 50E-6; % [mm] to [km]; Distance to focal plane
+% res = 1024; % [px]; Resolution/image width and height, assuming square img
+% u0 = res/2;
+% v0 = res/2;
+% img_coord_func = @(s)([u0 + f*s(1)/s(3); v0 + f*s(2)/s(3)]);
 
 
 %% Estimate star tracker attitude (simulate measurements)

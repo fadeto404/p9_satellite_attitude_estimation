@@ -47,13 +47,14 @@ axis equal;
 %% Estimate star tracker attitude (simulate measurements)
 % Approach 1: Given true state, add slight noise to attitude measurements
 x_true = quaternion(randn(),randn(),randn(),randn()).normalize();
-variances = [deg2rad(5/(60^2)), deg2rad(5/(60^2)), deg2rad(60/(60^2))];
+% Rotation order: Z-Y-X
+variances = [deg2rad(60/(60^2)), deg2rad(5/(60^2)), deg2rad(5/(60^2))];
 
 st = StarTracker(variances)
 %[x_meas, meas_err] = st.simulate_reading(x_true)
 x_meas_hist = [quaternion(0,0,0,0)];
 meas_err_hist = [quaternion(0,0,0,0)];
-for i=1:100
+for i=1:200
     [x_meas_hist(i,:), meas_err_hist(i,:)] = st.simulate_reading(x_true);
     x_meas_eul(i,:) = quat2eul(x_meas_hist(i,:), 'ZYX')
     x_meas_eul(i,:) = x_meas_eul(i,:)./norm(x_meas_eul(i,:))
@@ -69,7 +70,7 @@ x_true_eul = quat2eul(x_true, 'ZYX');
 opt_ax = r*(x_true_eul./norm(x_true_eul))
 opt_ax_est = r*(x_meas_eul)
 plot3([0; opt_ax(1)], [0; opt_ax(2)], [0; opt_ax(3)], "LineWidth", 2)
-scatter3([opt_ax_est(:,1)], [opt_ax_est(:,2)], [opt_ax_est(:,3)], "LineWidth", 1)
+scatter3([opt_ax_est(:,1)], [opt_ax_est(:,2)], [opt_ax_est(:,3)], "LineWidth", 1, "Marker", '.')
 
 
 

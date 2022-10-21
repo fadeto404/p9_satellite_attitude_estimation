@@ -2,13 +2,15 @@ classdef QuaternionFuser
     % QuaternionFuser Uses weighted quaternion average to fuse n quaternions
     %   Fuse a set of quaternions of arbitrary size, using weighted
     %   quaternion averaging. For unweighted average set R as n identity
-    %   matrices, e.g. R(:,:,1:4) = eye(3) for n=4. Using covariance
+    %   matrices, e.g. R(:,:,i) = eye(3) for i=1,...,n, n=4. Using covariance
     %   matrices for R results in Maximum Likelihood Estimate of the 
-    %   average quaternion.
+    %   average quaternion. Quaternions are expected as column vectors of 4
+    %   doubles, arranged in an array such that q(1:4, i) has corresponding
+    %   weighting matrix R(1:3,1:3,i)
     properties
-        R_bar {mustBeNumeric}
-        R_inv {mustBeNumeric}
-        q_bar {mustBeNumeric}
+        R_bar {mustBeNumeric} % Approximate fused quaternion covariance
+        R_inv {mustBeNumeric} % Array of inverted weighting matrices
+        q_bar {mustBeNumeric} % Estimated quaternion
     end
     methods
         function obj=QuaternionFuser(R)
@@ -29,8 +31,8 @@ classdef QuaternionFuser
         end
 
         function obj=set_weighting_matrices(obj, R)
-            [~, ~, num_quats] = size(R);
-            obj.R_inv = zeros(3,3,num_quats);
+            [n, m, num_quats] = size(R);
+            obj.R_inv = zeros(n,m,num_quats);
             for i=1:num_quats
                 obj.R_inv(:,:,i) = inv(R(:,:,i));
             end

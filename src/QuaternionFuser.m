@@ -14,7 +14,12 @@ classdef QuaternionFuser
     end
     methods
         function obj=QuaternionFuser(R)
-            obj.set_weighting_matrices(R);
+            [n, m, num_quats] = size(R);
+            obj.R_inv = zeros(n,m,num_quats);
+            for i=1:num_quats
+                obj.R_inv(:,:,i) = inv(R(:,:,i));
+            end
+            obj.R_bar = inv(sum(obj.R_inv, 3));
             obj.q_bar = zeros(4,1);
         end
 
@@ -23,7 +28,7 @@ classdef QuaternionFuser
             [~, num_quats] = size(q_array);
             for i=1:num_quats
                 Xi = quat_xi_mat(q_array(:,i));
-                M = M - Xi*obj.R_inv(:,:,i)*Xi';
+                M = M - Xi*obj.R_inv(:,:,i)*(Xi');
             end
             [eigvec, eigval] = eig(M);
             [~, ind] = max(diag(eigval));

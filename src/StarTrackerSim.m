@@ -3,7 +3,7 @@ clear; clc; close all;
 %  rng(1);                         % Consstant RNG
 %% Generate star catalog: Uniform random points on a sphere
 % Muller method
-num_stars = 10000;
+num_stars = 5000;
 u = randn([num_stars, 1]);
 v = randn([num_stars, 1]);
 w = randn([num_stars, 1]);
@@ -18,7 +18,7 @@ P_norm = sqrt(u.*u + v.*v + w.*w);
 P = r*[u./P_norm, v./P_norm, w./P_norm];
 
 figure(1); hold on;
-title('Global Reference')
+title('Star Map')
 scatter3(P(:,1), P(:,2), P(:,3), Marker=".")
 grid on; grid minor;
 axis equal;
@@ -38,7 +38,8 @@ y_new = quatrotate(x_true,[0 1 0]);
 x = [0 , camera_mid(1)];
 y = [0 , camera_mid(2)];
 z = [0 , camera_mid(3)];
-plot3(x,y,z,'color','r','linewidth',2);
+ox = plot3(x,y,z,'color','r','linewidth',2,'DisplayName','Optical Axis');
+legend(ox,  'Location','northwest');
 %% Star Tracker Specifications
 fov = 15;           % Field of View   
 focal_l = 1;        % in meters
@@ -71,10 +72,10 @@ for i = 1:4
     CrnrPoints(i,:) = CrnrAxis(i,:)*r;
     CrnrAxis_Lcl(i,:) = quatrotate(LocalToCrnr(i,:),[0 0 1]);
 end
-plot3([0,CrnrPoints(1,1)],[0,CrnrPoints(1,2)],[0,CrnrPoints(1,3)],'color','k','linewidth',2);
-plot3([0,CrnrPoints(2,1)],[0,CrnrPoints(2,2)],[0,CrnrPoints(2,3)],'color','g','linewidth',2);
-plot3([0,CrnrPoints(3,1)],[0,CrnrPoints(3,2)],[0,CrnrPoints(3,3)],'color','g','linewidth',2);
-plot3([0,CrnrPoints(4,1)],[0,CrnrPoints(4,2)],[0,CrnrPoints(4,3)],'color','g','linewidth',2);
+% plot3([0,CrnrPoints(1,1)],[0,CrnrPoints(1,2)],[0,CrnrPoints(1,3)],'color','k','linewidth',2);
+% plot3([0,CrnrPoints(2,1)],[0,CrnrPoints(2,2)],[0,CrnrPoints(2,3)],'color','g','linewidth',2);
+% plot3([0,CrnrPoints(3,1)],[0,CrnrPoints(3,2)],[0,CrnrPoints(3,3)],'color','g','linewidth',2);
+% plot3([0,CrnrPoints(4,1)],[0,CrnrPoints(4,2)],[0,CrnrPoints(4,3)],'color','g','linewidth',2);
 
 
 %% Star Tracker Snap
@@ -100,9 +101,11 @@ for i = 1:4
     % Move the projected points to the center
     moveCrnrToZero(i,:) = projectedCrnr(i,:) - camera_mid;
 end
-scatter3(projected(:,1), projected(:,2), projected(:,3), 'MarkerEdgeColor','k',Marker=".");
-scatter3(move_to_zero(:,1), move_to_zero(:,2), move_to_zero(:,3), 'MarkerEdgeColor','k',Marker=".");
-scatter3(moveCrnrToZero(:,1), moveCrnrToZero(:,2), moveCrnrToZero(:,3), 'MarkerEdgeColor','r',Marker=".");
+scatter3(projected(:,1), projected(:,2), projected(:,3), 'MarkerEdgeColor','k','DisplayName','Projected Stars',Marker=".");
+% legend('Projected Points')
+scatter3(move_to_zero(:,1), move_to_zero(:,2), move_to_zero(:,3), 'MarkerEdgeColor',"#A2142F",'DisplayName','Centered Stars',Marker=".");
+% legend('Centered Points')
+% scatter3(moveCrnrToZero(:,1), moveCrnrToZero(:,2), moveCrnrToZero(:,3), 'MarkerEdgeColor','r',Marker=".");
 
 %Rotate the projecte plane into xy axis(MAKE IT 2D)
 u = cross(optic_axis,[ 0 0 1]);
@@ -111,26 +114,30 @@ rotquat = quaternion(axang2quat([u (ang)]));
 In2DPlane = rotatepoint(rotquat,move_to_zero);
 CrnrIN2D = rotatepoint(rotquat,moveCrnrToZero);
 
-scatter3(In2DPlane(:,1), In2DPlane(:,2), In2DPlane(:,3), 'MarkerEdgeColor','k',Marker=".");
-scatter3(CrnrIN2D(:,1), CrnrIN2D(:,2), CrnrIN2D(:,3), 'MarkerEdgeColor','r',Marker=".");
+figure(2); hold on;
 
+% scatter(CrnrIN2D(:,1), CrnrIN2D(:,2), CrnrIN2D(:,3), 'MarkerEdgeColor','r',Marker=".");
+title('Stars in 2D')
 %Find the angle for boresight rotation
 x_point = rotatepoint(rotquat,x_new);
+plot([0 x_point(1)*rad_fov*0.8],[0 x_point(2)*rad_fov*0.8],'b--');
+scatter(In2DPlane(:,1), In2DPlane(:,2), 'MarkerEdgeColor','k',Marker=".");
+legend('Local Frame X Axis','Stars')
 rot_angle = atan2(-x_point(2),x_point(1));
 Rot_mat = [cos(rot_angle) -sin(rot_angle); sin(rot_angle) cos(rot_angle)];
 
 % Get The Final Snapshot.
 n = 0;
 for i = 1:count
-    if(In2DPlane(i,1)<sqr_len/2 && In2DPlane(i,1)>-sqr_len/2 && In2DPlane(i,2)<sqr_len/2 && In2DPlane(i,2)>-sqr_len/2)
+%     if(In2DPlane(i,1)<sqr_len/2 && In2DPlane(i,1)>-sqr_len/2 && In2DPlane(i,2)<sqr_len/2 && In2DPlane(i,2)>-sqr_len/2)
         n = n+1;
         snapshot(n,:) = In2DPlane(i,1:2);
         % Rotate the Points with the boresight rotation.
         snapshot_rot(n,:) = Rot_mat*snapshot(n,:)';
         % Scale the and flip the photo.(Pinhole camera Model)
-        snap(n,:) = snapshot_rot(n,:)* -photo_scale + randn(1,2)*Err + Err;
+        snap(n,:) = snapshot_rot(n,:)* -photo_scale;
         StarsInFrame(n,:) = StarsInFOV(i,:);
-    end
+%     end
 end
 for i = 1:4
     % Rotate the Points with the boresight rotation.
@@ -138,7 +145,9 @@ for i = 1:4
     % Scale the and flip the photo.(Pinhole camera Model)
     crnr(i,:) = crnr_rot(i,:)* -photo_scale;
 end
-
+figure(3); hold on;
+title('Final SnapShot');
+scatter(snap(:,1), snap(:,2), 'MarkerEdgeColor','k',Marker=".");
 %% Estimate the Star Tracker Attitude.
 
 for i = 1:n
@@ -174,6 +183,6 @@ for i = 1:floor(n/3)
 %     EulCalc(i,:) = quat2eul(QuatFin(i,:),'XYZ');
 %     EulErr(i,:) =  EulCalc(i,:) - Eul_true;
 end
-
+floor(n/3)
 QAvg = avg_quaternion_markley(QuatFin)'
 EulErr =  quat2eul(QAvg,'XYZ') - Eul_true

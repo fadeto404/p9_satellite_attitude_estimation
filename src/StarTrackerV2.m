@@ -3,6 +3,7 @@ classdef StarTrackerV2
     properties
         KCent           {mustBeNumeric}       % Error in pixels
         StarMap         {mustBeNumeric}       % Star Catalog
+        StarMapVec      {mustBeNumeric}       % Star Catalog in Unit Vec
         SizeStarMap     {mustBeNumeric}       % Num of Stars in Star Catalog
         Dist            {mustBeNumeric}       % Distance to the stars
         Fov             {mustBeNumeric}
@@ -21,7 +22,7 @@ classdef StarTrackerV2
         
         function obj = GenerateStarMap(obj)
             % Muller method
-            obj.SizeStarMap = 10000;
+            obj.SizeStarMap = 5000;
             u = randn([obj.SizeStarMap, 1]);
             v = randn([obj.SizeStarMap, 1]);
             w = randn([obj.SizeStarMap, 1]);
@@ -31,6 +32,7 @@ classdef StarTrackerV2
             obj.Dist = double(r);
             P_norm = sqrt(u.*u + v.*v + w.*w);
             obj.StarMap = obj.Dist*[u./P_norm, v./P_norm, w./P_norm];
+            obj.StarMapVec = obj.StarMap./obj.Dist;
         end
         
         function [q_meas,q_err] = MeasureAttitude(obj,q_true)
@@ -49,7 +51,7 @@ classdef StarTrackerV2
             StarsInFOV = zeros(100,3);
             move_to_zero = zeros(100,3);
             for i = 1:obj.SizeStarMap
-                vec = obj.StarMap(i,:)/norm(obj.StarMap(i,:));
+                vec = obj.StarMapVec(i,:);
                 angle =  acos(vec(1)*optic_axis(1) + vec(2)*optic_axis(2) + vec(3)*optic_axis(3));
                 if(angle < deg2rad(obj.Fov/2))
                     count = count + 1;

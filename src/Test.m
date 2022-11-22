@@ -3,12 +3,16 @@ clear;
 close all
 
 St1 = StarTrackerV2(1);
-
-for i = 1:300
+tic
+for i = 1:1000
     x(i,:) = compact(randrot);
-    [q,e] = St1.MeasureAttitude(x(i,:));
-    qmeas(i,:) = q;
-    EulTrue(i,:) = quat2eul(x(i,:),'XYZ');
-    EulMeas(i,:) = quat2eul(qmeas(i,:),'XYZ');
-    EulErr(i,:) = EulTrue(i,:) - EulMeas(i,:);
+    EulTrue = quat2eul(x(i,:),'XYZ');
+    for j = 1:100
+        [q,e] = St1.MeasureAttitude(x(i,:));
+        EulMeas(j,:) = quat2eul(q,'XYZ');
+        EulErr(j,:) = EulTrue - EulMeas(j,:);
+    end
+    VarEul(i,:) = var(EulErr);
 end
+toc
+mean(VarEul)

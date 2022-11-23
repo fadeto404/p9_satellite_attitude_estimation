@@ -18,11 +18,13 @@ classdef Gyro
         end
         function [omega_meas, bias, obj] = simulate_reading(obj, omega_true)
             obj = obj.propagate_bias();
-            omega_meas = omega_true + obj.noise_cov_chol*randn(3,1) + obj.bias;
+            % w_out = w_true + eta_v + eta_u, 
+            % eta_v ~ N(0,R_v), eta_u(t) ~ N(µ_u,R_u), µ_u = b0
+            omega_meas = omega_true + obj.noise_cov_chol*randn(3,1)*obj.delta_t + obj.bias*obj.delta_t;
             bias = obj.bias;
         end
         function obj = propagate_bias(obj)
-            obj.bias = obj.bias + (obj.bias_cov_chol*ones(3,1));
+            obj.bias = obj.bias + (obj.bias_cov_chol*randn(3,1))*obj.delta_t;
         end
     end
 end

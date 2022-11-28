@@ -161,7 +161,7 @@ for i=1:N
     q_est(:,i) = mekf_obj.q_ref;
     bias_est(:,i) = mekf_obj.beta_g;
     q_est_norm(:,i) = norm(q_est(:,i));
-    cond_obs_hist(:,i) = mekf_obj.cond_obs;
+%     cond_obs_hist(:,i) = mekf_obj.cond_obs;
 end
 
 % Compute estimation errors
@@ -178,7 +178,7 @@ end
 err = ag_err;
 
 %% Plot-time!
-PLT_CFG = [0; 0; 1; 1; 1; 1; 0];
+PLT_CFG = [0; 1; 1; 1; 1; 1; 0];
 % Plot angular accelerations
 if PLT_CFG(1)
 figure(1);
@@ -224,25 +224,31 @@ subplot(3,1,1)
 plot(T, bias(1,:)*180/pi*3600, T, bias_est(1,:)*180/pi*3600)
 xlim([T(:,1), T(:,end)])
 % ylim([-0.1, 0.2])
+legend('${\beta}_x$', '$\hat{\beta}_x$', "Interpreter", "latex", "FontSize", 14);
 subplot(3,1,2)
 plot(T, bias(2,:)*180/pi*3600, T, bias_est(2,:)*180/pi*3600)
 xlim([T(1), T(end)])
+legend('${\beta}_y$', '$\hat{\beta}_y$', "Interpreter", "latex", "FontSize", 14);
 % ylim([-0.1, 0.2])
 subplot(3,1,3)
 plot(T, bias(3,:)*180/pi*3600, T, bias_est(3,:)*180/pi*3600)
 xlim([T(1), T(end)])
 % ylim([-0.1, 0.2])
+legend('${\beta}_z$', '$\hat{\beta}_z$', "Interpreter", "latex", "FontSize", 14);
 end
 
-% Plot measured vs true velocities
+% Plot gyro measurement error
 if PLT_CFG(6)
 figure(6); hold on;
 subplot(3,1,1)
 plot(T, omega_meas(1,:)-omega(1,:))
+legend('$\hat{\omega}_x - \omega_x$', "Interpreter", "latex", "FontSize", 14);
 subplot(3,1,2)
 plot(T, omega(2,:)-omega_meas(2,:))
+legend('$\hat{\omega}_y - \omega_y$', "Interpreter", "latex", "FontSize", 14);
 subplot(3,1,3)
 plot(T, omega(3,:)-omega_meas(3,:))
+legend('$\hat{\omega}_z - \omega_z$', "Interpreter", "latex", "FontSize", 14);
 end
 
 if PLT_CFG(7)

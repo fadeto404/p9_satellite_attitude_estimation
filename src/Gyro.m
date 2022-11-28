@@ -20,7 +20,7 @@ classdef Gyro
             obj = obj.propagate_bias();
             % w_out = w_true + eta_v + eta_u, 
             % eta_v ~ N(0,R_v), eta_u(t) ~ N(µ_u,R_u), µ_u = b0
-            omega_meas = omega_true + obj.noise_cov_chol*randn(3,1)*obj.delta_t + obj.bias*obj.delta_t;
+            omega_meas = omega_true + obj.noise_cov_chol*randn(3,1)*obj.delta_t + obj.bias;
             bias = obj.bias;
         end
         function obj = propagate_bias(obj)

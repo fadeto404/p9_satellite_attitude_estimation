@@ -36,12 +36,14 @@ quat_fuser = QuaternionFuser(BigR); % Quaternion averaging init
 
 %% Gyro setup
 b0 = ones(3,1)*(0.1 / (180/pi*3600)); % 0.1 [deg/hr] to [rad/s] (init bias)
-gyro_noise_cov = eye(3)*(sqrt(10)*10^(-7))^2; % Noise covariance matrix
-gyro_bias_cov = eye(3)*(sqrt(10)*10^(-10))^2; % Bias random walk cov. mat.
-gy1 = Gyro(gyro_noise_cov, gyro_bias_cov, b0, t_s); % Gyro sim init
+gyro_noise_variance = (sqrt(10)*10^(-7))^2; % Noise variance
+gyro_bias_variance = (sqrt(10)*10^(-10))^2; % Bias variance
+gyro_noise_cov = eye(3)*gyro_noise_variance; % Noise covariance matrix
+gyro_bias_cov = eye(3)*gyro_bias_variance; % Bias random walk cov. mat.
+gy1 = Gyro(gyro_noise_variance, gyro_bias_variance, b0, t_s); % Gyro sim init
 
 %% Filter setup
-x0 = [zeros(3,1); zeros(3,1)];
+dx0 = [zeros(3,1); zeros(3,1)];
 P0 = [(0.1*pi/180)^2*eye(3), zeros(3); zeros(3), (0.2*pi/180/3600)^2*eye(3)];
 P0 = blkdiag((0.1*pi/180/3600)^2*eye(3) * eye(3), (0.2*pi/180/3600)^2 * eye(3));
 q_est0 = 1/sqrt(2)*[1; 0; 0; 1];
@@ -55,7 +57,8 @@ H = [eye(3) zeros(3)];
 R = R_st;
 % R = diag([6/3600*pi/180, 6/3600*pi/180, 6/3600*pi/180]).^2;
 Q = [gyro_noise_cov, zeros(3); zeros(3), gyro_bias_cov];
-mekf_obj = MM_MEKF(x0, P0, q_est0, omega0, F0, H, G, Q, R, t_s);
+
+mekf_obj = MM_MEKF(dx0, P0, q_est0, omega0, F0, H, G, Q, R, t_s);
 
 %% Simulation
 % Generate angular accelerations [x,y,z]
@@ -143,25 +146,26 @@ end
 err = ag_err;
 
 %% Plot-time!
+T_plot = T*t_s;
 PLT_CFG = [0; 1; 1; 1; 1; 1; 0];
 % Plot angular accelerations
 if PLT_CFG(1)
 figure(1);
-plot(T, omega_dot, "LineWidth", 1)
+plot(T_plot, omega_dot, "LineWidth", 1)
 legend('$\dot{\omega}_x$', '$\dot{\omega}_y$', '$\dot{\omega}_z$', "Interpreter", "latex", "FontSize", 14);
 end
 
 % Plot resulting angular velocities
 if PLT_CFG(2)
 figure(2);
-plot(T, omega)
+plot(T_plot, omega)
 legend('$\omega_x$', '$\omega_y$', '$\omega_z$', "Interpreter", "latex", "FontSize", 14);
 end
 
 % Plot estimation errors in Euler angles
 if PLT_CFG(3)
 figure(3); hold on;
-plot(T, err);
+plot(T_plot, err);
 legend('$\epsilon_z$', '$\epsilon_y$', '$\epsilon_x$', "Interpreter", "latex", "FontSize", 14);
 end
 
@@ -169,16 +173,16 @@ end
 if PLT_CFG(4)
 figure(4); hold on;
 subplot(2,2,1)
-plot(T, q_est(1,:), T, q_true(1,:));
+plot(T_plot, q_est(1,:), T_plot, q_true(1,:));
 legend('$\hat{q_1}$', '$q_1$', "Interpreter", "latex", "FontSize", 10);
 subplot(2,2,2)
-plot(T, q_est(2,:), T, q_true(2,:));
+plot(T_plot, q_est(2,:), T_plot, q_true(2,:));
 legend('$\hat{q_2}$', '$q_2$', "Interpreter", "latex", "FontSize", 10);
 subplot(2,2,3)
-plot(T, q_est(3,:), T, q_true(3,:));
+plot(T_plot, q_est(3,:), T_plot, q_true(3,:));
 legend('$\hat{q_3}$', '$q_3$', "Interpreter", "latex", "FontSize", 10);
 subplot(2,2,4)
-plot(T, q_est(4,:), T, q_true(4,:));
+plot(T_plot, q_est(4,:), T_plot, q_true(4,:));
 legend('$\hat{q_4}$', '$q_4$', "Interpreter", "latex", "FontSize", 10);
 end
 
@@ -187,18 +191,18 @@ if PLT_CFG(5)
 bias = bias_g1;
 figure(5); hold on;
 subplot(3,1,1)
-plot(T, bias(1,:)*180/pi*3600, T, bias_est(1,:)*180/pi*3600)
-xlim([T(:,1), T(:,end)])
+plot(T_plot, bias(1,:)*180/pi*3600, T_plot, bias_est(1,:)*180/pi*3600)
+xlim([T_plot(:,1), T_plot(:,end)])
 % ylim([-0.1, 0.2])
 legend('${\beta}_x$', '$\hat{\beta}_x$', "Interpreter", "latex", "FontSize", 14);
 subplot(3,1,2)
-plot(T, bias(2,:)*180/pi*3600, T, bias_est(2,:)*180/pi*3600)
-xlim([T(1), T(end)])
+plot(T_plot, bias(2,:)*180/pi*3600, T_plot, bias_est(2,:)*180/pi*3600)
+xlim([T_plot(1), T_plot(end)])
 legend('${\beta}_y$', '$\hat{\beta}_y$', "Interpreter", "latex", "FontSize", 14);
 % ylim([-0.1, 0.2])
 subplot(3,1,3)
-plot(T, bias(3,:)*180/pi*3600, T, bias_est(3,:)*180/pi*3600)
-xlim([T(1), T(end)])
+plot(T_plot, bias(3,:)*180/pi*3600, T_plot, bias_est(3,:)*180/pi*3600)
+xlim([T_plot(1), T_plot(end)])
 % ylim([-0.1, 0.2])
 legend('${\beta}_z$', '$\hat{\beta}_z$', "Interpreter", "latex", "FontSize", 14);
 end
@@ -207,19 +211,19 @@ end
 if PLT_CFG(6)
 figure(6); hold on;
 subplot(3,1,1)
-plot(T, omega_meas(1,:)-omega(1,:))
+plot(T_plot, omega_meas(1,:)-omega(1,:))
 subplot(3,1,2)
-plot(T, omega(2,:)-omega_meas(2,:))
+plot(T_plot, omega(2,:)-omega_meas(2,:))
 subplot(3,1,3)
-plot(T, omega(3,:)-omega_meas(3,:))
+plot(T_plot, omega(3,:)-omega_meas(3,:))
 end
 
 if PLT_CFG(7)
 figure(7); hold on;
 subplot(2,3,4)
-plot(T, q_norm, T, q_est_norm)
+plot(T_plot, q_norm, T_plot, q_est_norm)
 subplot(2,3,5)
-plot(T,cond_obs_hist)
+plot(T_plot,cond_obs_hist)
 end
 
 mse = [mean(err(1,1:end-1).^2), mean(err(2,1:end-1).^2), mean(err(3,1:end-1).^2)]

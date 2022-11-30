@@ -23,7 +23,7 @@ R2 = diag(variances2);
 %% New star tracker setup (preferred)
 % Variance of angular error around X, Y, and Z in the local star tracker
 % frame
-variances = [deg2rad(36/(60^2)), deg2rad(36/(60^2)), deg2rad(360/(60^2))];
+variances = [deg2rad(36/(60^2)), deg2rad(36/(60^2)), deg2rad(360/(60^2))].^2;
 R_st = diag(variances); % Star tracker frame noise covariance matrix
 ST1_rot = eye(3); % Star tracker 1 rotation wrt. body frame
 ST2_rot = [1, 0, 0; 0, 0, -1; 0, 1, 0]; % Star tracker 2 rotation wrt. BF
@@ -113,12 +113,12 @@ for i=1:N
     [omega_meas(:,i), bias_g1(:,i), gy1] = gy1.simulate_reading(omega(:,i));
 
     % Quaternion measurements
-    q1 = st1.simulate_reading(q_true(:,i));
-    q2 = st2.simulate_reading(q_true(:,i));
-    quat_fuser = quat_fuser.fuse([q1, q2]);
+%     q1 = st1.simulate_reading(q_true(:,i));
+%     q2 = st2.simulate_reading(q_true(:,i));
+%     quat_fuser = quat_fuser.fuse([q1, q2]);
     [q1, q1err] = st1.simulate_reading(q_true(:,i));
     [q2, q2err] = st2.simulate_reading(q_true(:,i));
-    %quat_fuser = quat_fuser.fuse([q1, q2]);
+    quat_fuser = quat_fuser.fuse([q1, q2]);
     %q_bar = quat_fuser.q_bar;
     q_bar = q1;
     

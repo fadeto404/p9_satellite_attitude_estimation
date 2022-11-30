@@ -3,6 +3,7 @@ classdef CAL_MEKF
         dx_pre {mustBeNumeric}      % Pre-update dx = [a', db', ds', dku', dkl']'
         dx_post {mustBeNumeric}     % Post-update dx = [a', db', ds', dku', dkl']'
         x {mustBeNumeric}           % Post-reset full state vector x(+)
+        x_pre {mustBeNumeric}       % Pre-update full state vector x(-)
         omega_est {mustBeNumeric}   % Estimated ang. vel. for propagation
         q_ref {mustBeNumeric}       % Reference quaternion, postupdate q_ref is the estimate
         beta_g {mustBeNumeric}      % Gyro bias estimate
@@ -11,9 +12,9 @@ classdef CAL_MEKF
         k_U {mustBeNumeric}         % Gyro misalignment factor - upper
         k_L {mustBeNumeric}         % Gyro misalignment factor - lower
         A_att {mustBeNumeric}       % Attitude matrix
-        S_est {mustBeNumeric}       % Scaling and misaligntment factor estimate
-        U_est {mustBeNumeric}
-        L_est {mustBeNumeric}
+        S_est {mustBeNumeric}       % Scaling and misalignment factor estimate
+        U_est {mustBeNumeric}       % Matrix for upper k
+        L_est {mustBeNumeric}       % Matrix for lower k
 
         Pxx_pre {mustBeNumeric}     % Pre-update error state covariance
         Pxx_post {mustBeNumeric}    % Post-update error state covariance
@@ -29,6 +30,7 @@ classdef CAL_MEKF
         K {mustBeNumeric}           % Kalman Gain Matrix
         Q_k {mustBeNumeric}         % Discretized spectral density
         Q_kk {mustBeNumeric}        % G*Q_k*G'
+        Phi {mustBeNumeric}         % Discretized state propagation matrix
 
         dt {mustBeNumeric}          % Time step magnitude [s] (constant)
         n {mustBeNumeric}           % Number of states in dx
@@ -36,20 +38,24 @@ classdef CAL_MEKF
         cond_obs {mustBeNumeric}    % Condition number of observability matrix
     end
     methods
-        function obj=CAL_MEKF(dx0, P0, q0, omega0, F, H, G, Q, R, t_s)
+        function obj=CAL_MEKF(x0, P0, q0, omega0, F, H, G, Q, R, t_s)
             obj.dt = t_s; % Time step, [s]
 
             obj.dx_pre = zeros(15,1); % dx0 = [a_g0; b0] (Attitude error parametrized by Gibbs vector, gyro bias error)
             obj.dx_post = zeros(15,1);
-            obj.Pxx_pre = P0; % Delta x covariance matrix initial condition
+            obj.Pxx_pre = P0;       % Delta x covariance matrix initial condition
             obj.Pxx_post = P0; 
-            obj.q_ref = q0; % Attitude estimate initial condition
-            obj.beta_g = dx0(4:6,:); % Gyro bias estimate initial condition
+            obj.q_ref = q0;         % Attitude estimate initial condition
+            obj.beta_g = x0(4:6);  % Gyro bias estimate initial condition
+            obj.s_g = x0(7:9);     % Initial scaling factor estimate
+            obj.k_U = x0(10:12);   % Initial upper misalignment estimate
+            obj.k_L = x0(13:15);   % Initial lower misalignment estimate
 
             obj.F = F; % State propagation matrix, 15x15
             obj.H = H; % Measurement sensitivity matrix, 3x15
-            obj.G = G; % Something something covariance?! 15x15
-            obj.Q = Q; % Process covariance/spectral density? 15x15
+            obj.G = G; % Something something covariance?!, 15x15
+            obj.Q = Q; % Process covariance/spectral density, 15x15
+            % obj.Q = blkdiag(var_v*eye(3), var_u*eye(3));
             obj.R = R; % Measurement noise covariance/spectral density? 3x3
             obj.Q_k = obj.dt*obj.G*obj.Q*obj.G'; % Discrete process noise covariance
             
@@ -66,20 +72,20 @@ classdef CAL_MEKF
             
             % Discretize linearized dynamics of state dx
             Omega = cross_prod_mat(obj.omega_est);
-            obj.F = [-Omega, -(eye(3) - obj.S_est), -diag(obj.omega - obj.beta_g); -obj.U_est, -obj.L_est; zeros(12,15)]; 
-            obj.G = blkdiag(-(eye(3) - obj.S_est), eye(3), eye(3), eye(3), eye(3));
-            obj.Q = blkdiag(var_v*eye(3), var_u*eye(3), var_s*eye(3), var_kU*eye(3), var_kL*eye(3));
-            script_A = obj.dt*[-obj.F, obj.G*obj.Q*obj.G';
-                        zeros(15,15), obj.F'];
-            script_B = expm(script_A);
-            Phi = script_B(16:end, 16:end)';
-            obj.Q_k = Phi*script_B(1:15, 16:end);
-%             Phi = eye(obj.n) + obj.F*obj.dt;
-%             Q_k = obj.dt*obj.G*obj.Q*obj.G';
+            obj.F = [-Omega, -(eye(3) - obj.S_est), -diag(obj.omega - obj.beta_g), -obj.U_est, -obj.L_est; zeros(12,15)]; 
+            obj.G = [blkdiag(-(eye(3) - obj.S_est), eye(3)); zeros(9,6)];
+%             script_A = obj.dt*[-obj.F, obj.G*obj.Q*obj.G';
+%                         zeros(15,15), obj.F'];
+%             script_B = expm(script_A);
+%             Phi = script_B(16:end, 16:end)';
+%             obj.Q_k = Phi*script_B(1:15, 16:end);
+            Phi = eye(15) + obj.F*obj.dt;
+            obj.Q_k = obj.dt*obj.G*obj.Q*obj.G';
 %             obj.cond_obs = cond(obsv(Phi, obj.H));
 
             % Discrete-time covariance propagation
             obj.Pxx_pre = Phi*obj.Pxx_post*Phi' + obj.Q_k;
+            obj.Phi = Phi;
 
             % Discretized quaternion propagation
             c = cos(0.5*norm_omega_est*obj.dt);
@@ -87,9 +93,12 @@ classdef CAL_MEKF
             psi_cross = cross_prod_mat(psi);
             Theta = [c*eye(3)-psi_cross, psi; -psi', c];
             obj.q_ref = Theta*obj.q_ref;
-
+            
             % Attitude matrix - only necessary for vector measurements
             %obj.A_att = quat_att_mat(obj.q_ref);
+
+            % "Propagate" x
+            obj.x_pre = obj.x;
         end
 
         function obj=update(obj, z)
@@ -111,14 +120,6 @@ classdef CAL_MEKF
             % Update error state covariance (Joseph form for stability)
             obj.Pxx_post = (eye(15)-obj.K*obj.H)*obj.Pxx_pre*(eye(15)-obj.K*obj.H)'+obj.K*obj.R*obj.K';
 
-            % Update matrices
-            obj.S_est = [obj.dx_post(7) obj.dx_post(10) obj.dx_post(11);obj.dx_post(13) obj.dx_post(8) obj.dx_post(12);obj.dx_post(14) obj.dx_post(15) obj.dx_post(9)];
-            obj.U_est = [obj.omega(2) - obj.beta_g(2), obj.omega(3) - obj.beta_g(3), 0;
-                         0, 0, obj.omega(3) - obj.beta_g(3);
-                         0, 0, 0];
-            obj.L_est = [0, 0, 0;
-                         obj.omega(1) - obj.beta_g(1), 0, 0;
-                         0, obj.omega(1) - obj.beta_g(1), obj.omega(2) - obj.beta_g(2)];
         end
 
         function obj=reset(obj)
@@ -129,6 +130,17 @@ classdef CAL_MEKF
             obj.s_g = obj.s_g + obj.dx_post(7:9);
             obj.k_U = obj.k_U + obj.dx_post(10:12);
             obj.k_L = obj.k_L + obj.dx_post(13:15);
+
+                        % Update matrices
+            obj.S_est = [obj.s_g(1) obj.k_U(1) obj.k_U(2);
+                         obj.k_L(1) obj.s_g(2) obj.k_U(3);
+                         obj.k_L(2) obj.k_L(3) obj.s_g(3)];
+            obj.U_est = [obj.omega(2) - obj.beta_g(2), obj.omega(3) - obj.beta_g(3), 0;
+                         0, 0, obj.omega(3) - obj.beta_g(3);
+                         0, 0, 0];
+            obj.L_est = [0, 0, 0;
+                         obj.omega(1) - obj.beta_g(1), 0, 0;
+                         0, obj.omega(1) - obj.beta_g(1), obj.omega(2) - obj.beta_g(2)];
             
             % Reset quaternion error estimate
             % Normalize after rotation, avoids accumulating error in norm,
@@ -138,9 +150,9 @@ classdef CAL_MEKF
             obj.q_ref = obj.q_ref./norm(obj.q_ref);
 
             % Reset state vector to current est. & error state vector to 0
-            obj.dx_pre = zeros(6,1);
-            obj.dx_post = zeros(6,1);
-            obj.x = [obj.q_ref; obj.beta_g];
+            obj.dx_pre = zeros(15,1);
+            obj.dx_post = zeros(15,1);
+            obj.x = [obj.dx_post(1:3); obj.beta_g; obj.s_g; obj.k_U; obj.k_L];
         end
     end
 end

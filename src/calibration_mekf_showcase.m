@@ -2,8 +2,8 @@ close all; clear; %clc;
 %% MEKF showcase simulation with fused star tracker measurement and gyro
 rng(42);
 % Simulation time basics
-t_s = 0.1; % [s]
-num_min = 90; % Sim time in [min]
+t_s = 1; % [s]
+num_min = 900; % Sim time in [min]
 N = num_min*60 / t_s; % No. of time steps
 T = 0:t_s:(N-1)*t_s;
 
@@ -23,7 +23,7 @@ R2 = diag(variances2);
 %% New star tracker setup (preferred)
 % Variance of angular error around X, Y, and Z in the local star tracker
 % frame
-variances = [deg2rad(36/(60^2)), deg2rad(36/(60^2)), deg2rad(360/(60^2))];
+variances = [deg2rad(36/(60^2)), deg2rad(36/(60^2)), deg2rad(360/(60^2))].^2;
 R_st = diag(variances); % Star tracker frame noise covariance matrix
 ST1_rot = eye(3); % Star tracker 1 rotation wrt. body frame
 ST2_rot = [1, 0, 0; 0, 0, -1; 0, 1, 0]; % Star tracker 2 rotation wrt. BF
@@ -35,35 +35,49 @@ BigR(:,:,2) = ST2_rot*R_st; % ST2 ...
 quat_fuser = QuaternionFuser(BigR); % Quaternion averaging init
 
 %% Gyro setup
+% Gyro parameters
 b0 = ones(3,1)*(0.1 / (180/pi*3600)); % 0.1 [deg/hr] to [rad/s] (init bias)
-S_true = 10e-7 * [1500 1000 1500; 500 1000 2000; 1000 1500 1500];
+S_true = (1e-6) * [1500 1000 1500; 500 1000 2000; 1000 1500 1500]; % Scaling and misalignment [ppm]
 gyro_noise_variance = (sqrt(10)*10^(-7))^2; % Noise variance
 gyro_bias_variance = (sqrt(10)*10^(-10))^2; % Bias variance
+
+% Gyro simulator
+gy1 = Gyro(gyro_noise_variance, gyro_bias_variance, b0, t_s, S_true); % Gyro sim init
+
+% Gyro covariance matrices (used in filter)
 gyro_noise_cov = eye(3)*gyro_noise_variance; % Noise covariance matrix
 gyro_bias_cov = eye(3)*gyro_bias_variance; % Bias random walk cov. mat.
-gy1 = Gyro(gyro_noise_variance, gyro_bias_variance, b0, t_s); % Gyro sim init
+
+% Initial estimate uncertainty matrices for gyro scaling and misalignment
+gyro_scaling_uncertainty = eye(3)*((1e-6)*2000/3)^2; % Covariance of scaling (max/3)
+gyro_misalignment_uncertainty = gyro_scaling_uncertainty; % Covariance (uncertainty) of misalignment (max/3)
 
 %% Filter setup
-dx0 = [zeros(15,1)];
-P0 = [(0.1*pi/180)^2*eye(3), zeros(3); zeros(3), (0.2*pi/180/3600)^2*eye(3)];
-P0 = blkdiag((0.1*pi/180/3600)^2*eye(3) * eye(3), (0.2*pi/180/3600)^2 * eye(3));
+x0 = [zeros(15,1)];
+% P0 = [(0.1*pi/180)^2*eye(3), zeros(3); zeros(3), (0.2*pi/180/3600)^2*eye(3)];
+% P0 = blkdiag((0.1*pi/180/3600)^2*eye(3) * eye(3), (0.2*pi/180/3600)^2 * eye(3));
 q_est0 = 1/sqrt(2)*[1; 0; 0; 1];
 omega0 = 0.0000001*ones(3,1);
 % omega0 = [inv(91.5/(2*pi)*60)*0; -inv(91.5/(2*pi)*60); 0]; % For constant velocity sim
 % omega0 = 0.1*pi/180*[sin(t_s*0.01*T(1)') sin(t_s*0.0085*T(1)') cos(t_s*0.0085*T(1)')]';
 F0 = [zeros(3) -eye(3); zeros(3,6)];
-G = [-eye(3) zeros(3); zeros(3) eye(3)];
-H = [eye(3) zeros(3)];
+% G = [-eye(3) zeros(3); zeros(3) eye(3)];
+G = blkdiag(-eye(3), eye(3));
+G = [G; zeros(9,6)];
+H = [eye(3) zeros(3,12)];
 % R = quat_fuser.R_bar;
 R = R_st;
 % R = diag([6/3600*pi/180, 6/3600*pi/180, 6/3600*pi/180]).^2;
-Q = [gyro_noise_cov, zeros(3); zeros(3), gyro_bias_cov];
-
-mekf_obj = MM_MEKF(dx0, P0, q_est0, omega0, F0, H, G, Q, R, t_s);
+Q = blkdiag(gyro_noise_cov, gyro_bias_cov);
+P0 = blkdiag(gyro_noise_cov, gyro_bias_cov, gyro_scaling_uncertainty, gyro_misalignment_uncertainty, gyro_misalignment_uncertainty);
+poa=(0.1*pi/180)^2*eye(3);
+pog=(0.2*pi/180/3600)^2*eye(3);
+P0 = blkdiag(poa, pog, gyro_scaling_uncertainty, gyro_misalignment_uncertainty, gyro_misalignment_uncertainty);
+mekf_obj = CAL_MEKF(x0, P0, q_est0, omega0, F0, H, G, Q, R, t_s);
 
 %% Simulation
 % Generate angular accelerations [x,y,z]
-omega_dot = [0.000001*sin(2*pi*T./(60*60)); 0.000001*sin(2*pi*T./(60*60) - pi/2); 0.000001*cos(2*pi*T./(60*60))];
+omega_dot = 10*[0.000001*sin(2.3*pi*T./(60*60)); 0.000001*sin(2*pi*T./(60*60)); 0.000001*cos(2*pi*T./(60*60))];
 
 % Generate angular velocities by Euler integration
 omega = zeros(3,N);
@@ -107,31 +121,60 @@ bias_g1 = zeros(3,N);
 bias_est = zeros(3,N);
 cond_obs_hist = zeros(1,N);
 omega_meas = zeros(3,N);
+s_est = zeros(3,N);
+k_U_est = zeros(3,N);
+k_L_est = zeros(3,N);
 %q_fu = zeros(4,N);
+
+% Data storage for smoothing
+x_post = zeros(15,N);
+x_pre = zeros(15,N);
+P_post = zeros(15,15,N);
+P_pre = zeros(15,15,N);
+Phi = zeros(15,15,N);
 
 for i=1:N
     % Gyro measurements
     [omega_meas(:,i), bias_g1(:,i), gy1] = gy1.simulate_reading(omega(:,i));
 
     % Quaternion measurements
-    q1 = st1.simulate_reading(q_true(:,i));
-    q2 = st2.simulate_reading(q_true(:,i));
-    quat_fuser = quat_fuser.fuse([q1, q2]);
+%     q1 = st1.simulate_reading(q_true(:,i));
+%     q2 = st2.simulate_reading(q_true(:,i));
+%     quat_fuser = quat_fuser.fuse([q1, q2]);
     [q1, q1err] = st1.simulate_reading(q_true(:,i));
     [q2, q2err] = st2.simulate_reading(q_true(:,i));
-    %quat_fuser = quat_fuser.fuse([q1, q2]);
+    quat_fuser = quat_fuser.fuse([q1, q2]);
     %q_bar = quat_fuser.q_bar;
     q_bar = q1;
     
     % Filtering
     mekf_obj = mekf_obj.update([q_bar; omega_meas(:,i)]);
     mekf_obj = mekf_obj.reset();
-    mekf_obj = mekf_obj.propagate();
+
+    % Save values for plotting
     q_est(:,i) = mekf_obj.q_ref;
-    bias_est(:,i) = mekf_obj.beta_g;
     q_est_norm(:,i) = norm(q_est(:,i));
+    bias_est(:,i) = mekf_obj.beta_g;
+    s_est(:,i) = mekf_obj.s_g;
+    k_U_est(:,i) = mekf_obj.k_U;
+    k_L_est(:,i) = mekf_obj.k_L;
+
+    x_post(:,i) = mekf_obj.x;
+    P_post(:,:,i) = mekf_obj.Pxx_post;
+
+    % Propagate filter
+    mekf_obj = mekf_obj.propagate();
+
+    x_pre(:,i+1) = mekf_obj.x_pre;
+    P_pre(:,:,i+1) = mekf_obj.Pxx_pre;
+    Phi(:,:,i+1) = mekf_obj.Phi;
+
     %cond_obs_hist(:,i) = mekf_obj.cond_obs;
 end
+
+% Smooth with RTS
+[x_s, ~] = rauch_tung_striebel_backward(x_pre, x_post, P_pre, P_post, Phi);
+gyro_cal = mean(x_s(4:15,round(N*0.5,0):end), 2)
 
 % Compute estimation errors
 err = zeros(3, N);
@@ -148,7 +191,7 @@ err = ag_err;
 
 %% Plot-time!
 T_plot = T*t_s;
-PLT_CFG = [0; 1; 1; 1; 1; 1; 0];
+PLT_CFG = [0; 1; 1; 1; 1; 1; 0; 1; 1; 0];
 % Plot angular accelerations
 if PLT_CFG(1)
 figure(1);
@@ -227,9 +270,43 @@ subplot(2,3,5)
 plot(T_plot,cond_obs_hist)
 end
 
+if PLT_CFG(8)
+figure(8); hold on;
+subplot(3,1,1)
+plot(T_plot, s_est);
+legend('$s_x$', '$s_y$', '$s_z$', "Interpreter", "latex", "FontSize", 14);
+subplot(3,1,2)
+plot(T_plot, k_U_est);
+legend('$k_{U1}$', '$k_{U2}$', '$k_{U3}$', "Interpreter", "latex", "FontSize", 14);
+subplot(3,1,3)
+plot(T_plot, k_L_est);
+legend('$k_{L1}$', '$k_{L2}$', '$k_{L3}$', "Interpreter", "latex", "FontSize", 14);
+end
+
+if PLT_CFG(9)
+figure(9); hold on;
+subplot(3,1,1)
+plot(T_plot, x_s(7:9,:));
+legend('$\bar{s}_x$', '$\bar{s}_y$', '$\bar{s}_z$', "Interpreter", "latex", "FontSize", 14);
+subplot(3,1,2)
+plot(T_plot, x_s(10:12,:));
+legend('$\bar{k}_{U1}$', '$\bar{k}_{U2}$', '$\bar{k}_{U3}$', "Interpreter", "latex", "FontSize", 14);
+subplot(3,1,3)
+plot(T_plot, x_s(13:15,:));
+legend('$\bar{k}_{L1}$', '$\bar{k}_{L2}$', '$\bar{k}_{L3}$', "Interpreter", "latex", "FontSize", 14);
+end
+
+if PLT_CFG(10)
+figure(10); hold on;
+% Plot resulting angular velocities
+plot(T_plot, w')
+legend('$w_x$', '$w_y$', '$w_z$', "Interpreter", "latex", "FontSize", 14);
+end
+
 mse = [mean(err(1,1:end-1).^2), mean(err(2,1:end-1).^2), mean(err(3,1:end-1).^2)]
 bias_err = (bias - bias_est)*180/pi*3600;
 bias_mse = mean(bias_err.^2, 2)
+
 
 
 

@@ -2,35 +2,12 @@ clear; clc; close all;
 
 % Angles for extrinsic rotation, order: X-Y-Z
 gamma = deg2rad(-90); % Angle around x
-beta = deg2rad(0);   % Angle around y
+beta = deg2rad(30);   % Angle around y
 alpha = deg2rad(0);  % Angle around z
 
-% Shorthands for sine and cosine
-cy = cos(gamma);
-sy = sin(gamma);
-cb = cos(beta);
-sb = sin(beta);
-ca = cos(alpha); 
-sa = sin(alpha);
+R1 = ext_rot_mat_xyz(gamma, beta, alpha);
 
-% Intermediate rotation matrices
-% Rx = [1, 0, 0;
-%       0, cy, -sy;
-%       0, sy, cy];
-% Ry = [cb, 0, sb;
-%       0 , 1, 0;
-%       -sb, 0, cb];
-% Rz = [ca, -sa, 0;
-%       sa, ca, 0;
-%       0, 0, 1];
-% R1 = Rz*Ry*Rx;
-
-% Resulting rotation matrix
-R1 = [ca*cb, ca*sb*sy-sa*cy, ca*sb*cy+sa*sy;
-         sa*cb, sa*sb*sy+ca*cy, sa*sb*cy-ca*sy;
-         -sb, cb*sy, cb*cy];
-
-R1 = [1, 0, 0; 0, 0, 1; 0, 1, 0];
+% R1 = [1, 0, 0; 0, 0, 1; 0, 1, 0];
 
 % Optional rotation matrix describing base frame relative to world frame
 R0 = [1 0 0; 0 0 -1; 0 1 0];

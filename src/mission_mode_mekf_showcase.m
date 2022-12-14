@@ -211,7 +211,7 @@ end
 if PLT_CFG(6)
 figure(6); hold on;
 subplot(3,1,1)
-plot(T_plot, omega_meas(1,:)-omega(1,:))
+plot(T_plot, omega(1,:)-omega_meas(1,:))
 subplot(3,1,2)
 plot(T_plot, omega(2,:)-omega_meas(2,:))
 subplot(3,1,3)

@@ -2,8 +2,8 @@ close all; clear; %clc;
 %% MEKF showcase simulation with fused star tracker measurement and gyro
 rng(42);
 % Simulation time basics
-t_s = 1; % [s]
-num_min = 900; % Sim time in [min]
+t_s = 0.1; % [s]
+num_min = 90; % Sim time in [min]
 N = num_min*60 / t_s; % No. of time steps
 T = 0:t_s:(N-1)*t_s;
 
@@ -255,7 +255,7 @@ end
 if PLT_CFG(6)
 figure(6); hold on;
 subplot(3,1,1)
-plot(T_plot, omega_meas(1,:)-omega(1,:))
+plot(T_plot, omega(1,:)-omega_meas(1,:))
 subplot(3,1,2)
 plot(T_plot, omega(2,:)-omega_meas(2,:))
 subplot(3,1,3)
@@ -270,6 +270,7 @@ subplot(2,3,5)
 plot(T_plot,cond_obs_hist)
 end
 
+% Estimated scaling factors and misalignments (forward pass/EKF estimate)
 if PLT_CFG(8)
 figure(8); hold on;
 subplot(3,1,1)
@@ -283,6 +284,7 @@ plot(T_plot, k_L_est);
 legend('$k_{L1}$', '$k_{L2}$', '$k_{L3}$', "Interpreter", "latex", "FontSize", 14);
 end
 
+% Smoothed scaling factors and misalignments (backward pass/RTS estimate)
 if PLT_CFG(9)
 figure(9); hold on;
 subplot(3,1,1)

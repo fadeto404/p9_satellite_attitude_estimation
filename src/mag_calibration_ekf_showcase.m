@@ -154,27 +154,27 @@ deviation = err./x_true * 100;
 % mat2str(b_hat, 10)
 % mat2str(deviation, 10)
 
-%% Compare corrected measurements to true
-D1_hat = [x_sim(4,end), x_sim(7,end), x_sim(8,end);
-         x_sim(7,end), x_sim(5,end), x_sim(9,end);
-         x_sim(8,end), x_sim(9,end), x_sim(6,end)];
-b1_hat = [x_sim(1,end); x_sim(2,end); x_sim(3,end)];
-B_mag_cal = zeros(3,N);
-for i=1:N
-    B_mag_cal(:,i) = (eye(3) + D1_hat)*B_mag(:,i) - b1_hat;
-end
-B_err = R_mag - B_mag_cal;
-meas_err = R_mag - B_mag;
-
-figure(2); hold on;
-subplot(2,1,1);
-plot(T, B_err)
-subplot(2,1,2);
-plot(T, meas_err)
-hold off;
-
-cal_mse = mean(B_err.^2, 2)
-raw_mse = mean(meas_err.^2, 2)
+%% Compare corrected measurements to true (not correct)
+% D1_hat = [x_sim(4,end), x_sim(7,end), x_sim(8,end);
+%          x_sim(7,end), x_sim(5,end), x_sim(9,end);
+%          x_sim(8,end), x_sim(9,end), x_sim(6,end)];
+% b1_hat = [x_sim(1,end); x_sim(2,end); x_sim(3,end)];
+% B_mag_cal = zeros(3,N);
+% for i=1:N
+%     B_mag_cal(:,i) = (eye(3) + D1_hat)*B_mag(:,i) - b1_hat;
+% end
+% B_err = R_mag - B_mag_cal;
+% meas_err = R_mag - B_mag;
+% 
+% figure(2); hold on;
+% subplot(2,1,1);
+% plot(T, B_err)
+% subplot(2,1,2);
+% plot(T, meas_err)
+% hold off;
+% 
+% cal_mse = mean(B_err.^2, 2)
+% raw_mse = mean(meas_err.^2, 2)
 
 
 %% Animated plot

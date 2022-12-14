@@ -5,9 +5,9 @@ ME = 5.97217e+24;   % Mass of earth [kg]
 G =  6.67430e-11;   % Gravitational constant [m³/(kg.s²)]
 GM = G*ME;          % Earth's: gravitational constant * mass [m³/s²]
 RE = 6371.2*1000;   % Earth's radius: average used in IGRF13 [m]
-nanoTesla = 400*1000;       % Satellite orbit radius = RE+r [m]
-v0 = sqrt(GM/(RE+nanoTesla));   % Necessary speed to keep satellite in circular orbit at distance RE+r from center of earth
-T_o = 2*pi*(RE+nanoTesla)/v0;   % Orbital period [s]
+r = 400*1000;       % Satellite orbit radius = RE+r [m]
+v0 = sqrt(GM/(RE+r));   % Necessary speed to keep satellite in circular orbit at distance RE+r from center of earth
+T_o = 2*pi*(RE+r)/v0;   % Orbital period [s]
 inclination = deg2rad(30); % Orbit inclination (angle of orbit relative to equator)
 %% Simulation time setup
 rng(42);
@@ -57,7 +57,7 @@ for i=1:N-1
 end
 
 %% Two-body problem simulation
-pos0 = [RE+nanoTesla; 0; 0]; % Start position at intersection of equator and IERS reference meridian (WGS84) at distance RE+r from center of earth
+pos0 = [RE+r; 0; 0]; % Start position at intersection of equator and IERS reference meridian (WGS84) at distance RE+r from center of earth
 vel0 = ext_rot_mat_xyz(inclination,0,0)*[0; v0; 0]; % Start velocity, a vector of magnitude v0 (necessary speed to keep circular orbit) perpendicular to gravitational force, rotated by inclination
 orbit_state0 = [pos0; vel0];  % x, y, z, x_dot, y_dot, z_dot
 [~,orbit_state] = ode89(@satellite_earth_twobp, T, orbit_state0);

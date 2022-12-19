@@ -42,7 +42,8 @@ classdef MAG_CAL_UKF < handle
             obj.K = P_xz / (P_zz+obj.R);
 
             obj.x_post = obj.x_pre + obj.K*(z-z_hat);
-            obj.P_post = obj.P_pre - obj.K*P_xz;
+%             obj.P_post = obj.P_pre - obj.K*P_xz';
+            obj.P_post = obj.P_pre - obj.K*(P_zz+obj.R)*obj.K';
 
             x = obj.x_post;
             P = obj.P_post;
@@ -61,6 +62,7 @@ classdef MAG_CAL_UKF < handle
 %             [U,Lambda,~]    = svd(P);
 %             C               = U*sqrt(Lambda);
             C = chol(P); % Compute Cholesky factor of covariance matrix
+            C = chol(C*C');
         
             % Compute sigma points
             sigma_points(:, 1) = x; % Set first sigma point as the mean
@@ -74,13 +76,13 @@ classdef MAG_CAL_UKF < handle
             end
             
             % Transform sigma points
-            f_sigma_points = zeros(n, 2*n+1);
+            f_sigma_points = zeros(1, 2*n+1);
             for i=1:2*n+1
                 f_sigma_points(:,i) = g(sigma_points(:,i), B);
             end
             
             % Compute mean and covariance
-            mean_sig = zeros(n,1);
+            mean_sig = zeros(1,1);
             for i=1:2*n+1
                 mean_sig = mean_sig + W(i)*f_sigma_points(:,i);
             end

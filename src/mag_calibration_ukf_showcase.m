@@ -211,9 +211,9 @@ P_sim = zeros(9,9,N);
 S_sim = zeros(L,L,N);
 tic
 for i=1:N
-    [x_sim(:,i), P_sim(:,:,i)] = mag_cal_ekf.update(B_mag(:,i), R_mag(:,i)*nT2mG);
-%     [~,~] = mag_cal_ukf.propagate();
-%     [x_sim(:,i), S_sim(:,:,i)] = mag_cal_ukf.update(B_mag(:,i), R_mag(:,i)*nT2mG);
+%     [x_sim(:,i), P_sim(:,:,i)] = mag_cal_ekf.update(B_mag(:,i), R_mag(:,i)*nT2mG);
+    [~,~] = mag_cal_ukf.propagate();
+    [x_sim(:,i), S_sim(:,:,i)] = mag_cal_ukf.update(B_mag(:,i), R_mag(:,i)*nT2mG);
 end
 toc
 x_sim = [x0, x_sim];

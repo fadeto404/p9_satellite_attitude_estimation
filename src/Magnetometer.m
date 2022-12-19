@@ -3,7 +3,7 @@ classdef Magnetometer < handle
         D_true {mustBeNumeric}      % Symmetric matrix of scaling factors and non-orthogonality corrections
         b_true {mustBeNumeric}      % True bias
         OT {mustBeNumeric}          % Rotation matrix containing info on axis misalignments
-        noise_cov {mustBeNumeric}   % Noise covariance matrix; TODO: Continuous or discrete???!!!
+        noise_cov {mustBeNumeric}   % Noise covariance matrix, discrete-time
         noise_cov_chol {mustBeNumeric}
         IpDinv {mustBeNumeric}      % (I_3 + D_true)^(-1); For improved computation time
         B_k {mustBeNumeric}         % Most recent measurement

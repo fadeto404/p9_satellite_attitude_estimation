@@ -1,9 +1,9 @@
 clear; clc; close all;
 
 % Angles for extrinsic rotation, order: X-Y-Z
-gamma = deg2rad(-90); % Angle around x
-beta = deg2rad(30);   % Angle around y
-alpha = deg2rad(0);  % Angle around z
+gamma = deg2rad(24); % Angle around x
+beta = deg2rad(64);   % Angle around y
+alpha = deg2rad(13);  % Angle around z
 
 R1 = ext_rot_mat_xyz(gamma, beta, alpha);
 

@@ -92,7 +92,6 @@ classdef MAG_CAL_SRUKF < handle
 %                 sigma_points(:, i + 1) = x + c*S(:, i)'; % Positive sigma point
 %                 sigma_points(:, n + i + 1) = x - c*S(:, i)'; % Negative sigma point
 %             end
-
         end
 
         % Unscented transform: For estimating the mean of a stochastic variable
@@ -129,7 +128,7 @@ classdef MAG_CAL_SRUKF < handle
             E_mat = 2*D_mat + D_mat^2;
             E_vec = [E_mat(1,1), E_mat(2,2), E_mat(3,3), E_mat(1,2), E_mat(1,3), E_mat(2,3)]';
 %             z_hat = [2*B', -S']*[(eye(3)+D_mat)*x(1:3); E_vec] - norm(x(1:3))^2;
-            z_hat = -S'*E_vec + 2*B'*(eye(3) + D_mat)*x(1:3) - (x(1)^2 + x(2)^2 + x(3)^2);
+            z_hat = -S'*E_vec + 2*B'*(eye(3) + D_mat)*x(1:3) - (x(1)^2 + x(2)^2 + x(3)^2) - 0.0675;
         end % h (measurement function)
 
         function  [x_hat] = f(x, ~)

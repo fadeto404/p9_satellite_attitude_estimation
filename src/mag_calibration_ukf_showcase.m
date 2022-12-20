@@ -94,9 +94,9 @@ nT2mG = 1/mG2nT;
 D1 = [0.0800, 0.0520, 0.0500;
       0.0520, 0.0500, 0.0490;
       0.0500, 0.0490, 0.0750]; % Unitless, scaling factors!
-b1 = [50.00; 60.00; 55.0];
+b1 = [50.00; 60.00; 55.0]; % Bias in [mG]
 x_true = [b1; D1(1,1); D1(2,2); D1(3,3); D1(1,2); D1(1,3); D1(2,3)];
-OT1 = eye(3); % ext_rot_mat_xyz(deg2rad(0.05), deg2rad(0.02), deg2rad(0.01));
+OT1 = eye(3); % ext_rot_mat_xyz(deg2rad(1), deg2rad(0.02), deg2rad(0.1));
 Sigma1 = eye(3).*((0.15)^2);
 mgm1 = Magnetometer(D1, b1, OT1, Sigma1);
 
@@ -238,24 +238,9 @@ D_hat = [x_sim(4,end), x_sim(7,end), x_sim(8,end);
          x_sim(8,end), x_sim(9,end), x_sim(6,end)]
 
 err = x_sim(:,end) - x_true;
-deviation = err./x_true * 100;
+deviation = err./x_true * 100
 % mat2str(b_hat, 10)
 % mat2str(deviation, 10)
-
-%% Comparison
-figure(3);
-subplot(3,1,1); hold on;
-plot(T, x_sim(1:3,:), T, x_sim_db(1:3,:))
-plot(T, ones(size(x_sim(1:3,:))).*x_true(1:3), "LineStyle","--")
-hold off;
-subplot(3,1,2); hold on;
-plot(T, x_sim(4:6,:), T, x_sim_db(4:6,:))
-plot(T, ones(size(x_sim(4:6,:))).*x_true(4:6), "LineStyle","--")
-hold off;
-subplot(3,1,3); hold on;
-plot(T, x_sim(7:9,:), T, x_sim_db(7:9,:))
-plot(T, ones(size(x_sim(7:9,:))).*x_true(7:9), "LineStyle","--")
-hold off;
 
 %% Compare corrected measurements to true (not correct)
 % D1_hat = [x_sim(4,end), x_sim(7,end), x_sim(8,end);
